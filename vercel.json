@@ -1,0 +1,1 @@
+{\n  "headers": [\n    {\n      "source": "/(.*)",\n      "headers": [\n        {\n          "key": "Cache-Control",\n          "value": "no-cache, no-store, must-revalidate"\n        },\n        {\n          "key": "Pragma",\n          "value": "no-cache"\n        },\n        {\n          "key": "Expires",\n          "value": "0"\n        }\n      ]\n    }\n  ]\n}
