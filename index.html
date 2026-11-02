@@ -1,0 +1,922 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta 
+charset="UTF-8">
+<meta name="viewport" content="width=device-width, 
+initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>YM Replacement Ops & EOD 
+Analytics</title>
+
+
+<script>
+  window.onerror = function(msg, url, lineNo, columnNo, error) 
+{
+    var errUI = '<div style="background:#fee; color:#c00; padding:20px; 
+font-family:sans-serif; margin:20px; border-radius:10px; border:2px solid #c00;">';
+    errUI += 
+'<h2 style="margin-top:0;">???? SYSTEM CRASH LOG</h2>';
+    errUI += 
+'<p><strong>Error:</strong> ' + msg + '</p>';
+    errUI += 
+'<p><strong>Line:</strong> ' + lineNo + ' | <strong>Col:</strong> ' + 
+columnNo + '</p>';
+    errUI += '<p><strong>Stack:</strong> <pre 
+style="background:#fff; padding:10px; overflow-x:auto; font-size:12px;">' + (error && 
+error.stack ? error.stack : 'N/A') + '</pre></p>';
+    errUI += 
+'</div>';
+    document.body.innerHTML = errUI;
+    return false;
+  
+};
+</script>
+
+
+<script 
+src="https://cdn.tailwindcss.com"></script>
+<script 
+src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src\x
+3d"https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+
+<scr
+ipt 
+src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+
+<style>
+  
+body { background-color: #f8fafc; font-family: 'Segoe UI', sans-serif; }
+  .spinner { 
+border-top-color: #1e293b; animation: spinner 1s linear infinite; }
+  @keyframes spinner { 0% { transform: 
+rotate(0deg); } 100% { transform: rotate(360deg); } }
+  .animate-fade { animation: fadeIn 0.3s 
+ease-in-out; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 
+1; transform: translateY(0); } }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar 
+{ -ms-overflow-style: none; scrollbar-width: none; 
+}
+</style>
+</head>
+<body>
+
+<div id="root">
+  <div 
+style="display:flex; justify-content:center; align-items:center; height:100vh; flex-direction:column; 
+font-family:sans-serif; text-align:center; padding:20px;">
+    <h2 
+style="color:#1e293b;">??? Initializing Operations Center...</h2>
+    <p 
+style="color:#64748b; margin-top:10px;">Establishing secure connection. If this screen persists, 
+verify Vercel iframe permissions.</p>
+  </div>
+</div>
+
+<script 
+type="text/babel">
+try {
+  const { useState, useEffect, useMemo } = React;
+  const 
+API_URL = "https:\\/\\/script.google.com\\/macros\\/s\\/AKfycbzAOHk0S_fwB_bBW43qqyBxBcvgMDsdL3MA
+RTAVMNuHJVrYF44gWz13wCc1dR1aIdrq_g\\/exec";
+
+  const getTodayString = () => {
+    const 
+months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const 
+d = new Date();
+    let day = d.getDate().toString().padStart(2, '0');
+    let month = 
+months[d.getMonth()];
+    let year = d.getFullYear();
+    return day + "-" + month + 
+"-" + year;
+  };
+
+  function AdminApp() {
+    const [tickets, setTickets] = 
+useState([]);
+    const [loading, setLoading] = useState(true);
+    const [viewMode, 
+setViewMode] = useState("Ops"); 
+    
+    const [activeTab, setActiveTab] = 
+useState("Raised");
+    const [searchQuery, setSearchQuery] = useState("");
+    const 
+[processingId, setProcessingId] = useState(null);
+
+    const [showResolveModal, 
+setShowResolveModal] = useState(null);
+    const [resolveType, setResolveType] = 
+useState("");
+    const [resolveDetails, setResolveDetails] = useState("");
+
+    
+useEffect(() => {
+      fetchTickets();
+    }, []);
+
+    const fetchTickets = () => 
+{
+      setLoading(true);
+      fetch(API_URL, {
+        method: 'POST',
+        body: 
+JSON.stringify({ action: "getAdminTickets" }),
+        headers: { 'Content-Type': 
+'text/plain;charset=utf-8' }
+      })
+      .then(res => res.json())
+      .then(res 
+=> {
+        if (res.success) {
+          setTickets(res.data);
+        } else {
+          
+alert("Server Error: " + res.message);
+        }
+        setLoading(false);
+      })
+      
+.catch(err => {
+        alert("Network Fetch Error");
+        setLoading(false);
+      
+});
+    };
+
+    const updateStatus = (ticket, newStatus, extraPayload) => {
+      if 
+(!window.confirm("Mark ticket " + ticket.ticketId + " as " + newStatus + "?")) 
+return;
+      
+      setProcessingId(ticket.ticketId);
+      
+      let payload = {
+        action: 
+"updateTicketStatus",
+        rowIndex: ticket.rowIndex,
+        ticketId: ticket.ticketId,
+        
+shopName: ticket.shopName,
+        status: newStatus
+      };
+
+      if (extraPayload) {
+        
+Object.assign(payload, extraPayload);
+      }
+
+      fetch(API_URL, {
+        method: 'POST',
+   
+     body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' 
+}
+      })
+      .then(res => res.json())
+      .then(res => {
+        if (res.success) 
+{
+          fetchTickets();
+        } else {
+          alert(res.message);
+        }
+        
+setProcessingId(null);
+        setShowResolveModal(null);
+      });
+    };
+
+    const handleQC = 
+(ticket, isApproved) => {
+      const status = isApproved ? "Testing (Approved)" : 
+"Testing (Rejected)";
+      let qcRemarks = "";
+      if (!isApproved) {
+        
+qcRemarks = window.prompt("Reason for Rejection:");
+        if (!qcRemarks) return; 
+      } else 
+{
+        qcRemarks = "Defect verified. Approved for replacement.";
+      }
+      
+updateStatus(ticket, status, { qcRemarks: qcRemarks });
+    };
+
+    const handleResolveSubmit = () 
+=> {
+      if (!resolveType || !resolveDetails) {
+        return alert("Please fill all 
+details!");
+      }
+      
+      let finalStatus = "Resolved";
+      if (resolveType 
+=== "Rejected & Returned") finalStatus = "Rejected - Returned to Dealer";
+      
+else if (resolveType === "Credit Note Issued") finalStatus = "Approved - Credit Note 
+Raised";
+      else if (resolveType === "Replacement Dispatched") finalStatus = 
+"Approved - Replacement Dispatched";
+
+      updateStatus(showResolveModal, finalStatus, {
+        
+resolutionType: resolveType,
+        resolutionDetails: resolveDetails
+      });
+    };
+
+    const 
+handleRTO = (ticket) => {
+      updateStatus(ticket, ticket.status, { brandRtoStatus: "Sent to 
+Brand" });
+    };
+
+    const filteredTickets = useMemo(() => {
+      let filtered = 
+tickets;
+      
+      if (activeTab === "Raised") {
+        filtered = tickets.filter(t 
+=> t.status === "Raised");
+      } else if (activeTab === "Inwarded") 
+{
+        filtered = tickets.filter(t => t.status === "Inwarded" || t.status 
+=== "Pickup Scheduled");
+      } else if (activeTab === "Testing") {
+  
+      filtered = tickets.filter(t => t.status.indexOf("Testing") !== -1);
+      } else 
+if (activeTab === "RTO") {
+        filtered = tickets.filter(t => t.status 
+=== "Sent to Brand Service Center" || (t.status === "Resolved" && 
+t.brandRtoStatus === "Pending"));
+      } else if (activeTab === "Closed") 
+{
+        filtered = tickets.filter(t => 
+          t.status !== "Raised" && 
+ 
+         t.status !== "Inwarded" && 
+          t.status !== "Pickup Scheduled" 
+&& 
+          t.status.indexOf("Testing") === -1 && 
+          t.status !== 
+"Sent to Brand Service Center" &&
+          !(t.status === "Resolved" && 
+t.brandRtoStatus === "Pending")
+        );
+      }
+
+      if (searchQuery) {
+       
+ filtered = filtered.filter(t => 
+          (t.ticketId && 
+t.ticketId.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1) || 
+          (t.shopName && 
+t.shopName.toLowerCase().indexOf(searchQuery.toLowerCase()) !== -1) ||
+          (t.phone && 
+t.phone.indexOf(searchQuery) !== -1)
+        );
+      }
+      return filtered;
+    }, [tickets, 
+activeTab, searchQuery]);
+
+    const eodData = useMemo(() => {
+      if (!tickets.length) return 
+null;
+      const todayStr = getTodayString();
+      const nowMs = new Date().getTime();
+      
+      
+const includesToday = (dateField) => dateField && typeof dateField === 'string' && 
+dateField.indexOf(todayStr) !== -1;
+      
+      const getFrequency = (arr) => {
+          let 
+counts = {}; 
+          let maxKey = "N/A";
+          let maxVal = 0;
+          
+arr.forEach(val => {
+              if(!val) return;
+              counts[val] = 
+(counts[val] || 0) + 1;
+              if(counts[val] > maxVal) { 
+                maxVal = 
+counts[val]; 
+                maxKey = val; 
+              }
+          });
+          return 
+{ name: maxKey, count: maxVal };
+      };
+
+      let metrics = {
+        raisedToday: 0, 
+resolvedToday: 0, totalTATDays: 0, tatCount: 0,
+        pendingInward: 0, pendingQC: 0, pendingSettlement: 0, 
+pendingRTO: 0, redFlags: 0,
+        qcPassedToday: 0, qcRejectedToday: 0, cnIssuedToday: 0, 
+replacementsDispatchedToday: 0, itemsReturnedToday: 0,
+        brandsToday: [], skusToday: [], 
+defectsToday: [], dealersToday: [], allRejectedDealers: []
+      };
+
+      
+tickets.forEach(t => {
+        const isClosed = t.status !== "Raised" && t.status 
+!== "Inwarded" && t.status !== "Pickup Scheduled" && 
+                   
+      t.status.indexOf("Testing") === -1 && t.status !== "Sent to Brand Service 
+Center" && 
+                         !(t.status === "Resolved" && 
+t.brandRtoStatus === "Pending");
+        
+        if (t.date === todayStr) {
+     
+     metrics.raisedToday++;
+          if (t.brand) metrics.brandsToday.push(t.brand);
+          if (t.productName) 
+metrics.skusToday.push(t.productName);
+          if (t.defectType) metrics.defectsToday.push(t.defectType);
+       
+   if (t.shopName) metrics.dealersToday.push(t.shopName);
+        }
+        
+        if (isClosed && 
+includesToday(t.resolvedDate)) {
+          metrics.resolvedToday++;
+          if (t.rawDate) {
+            
+let resolvedMs = new Date().getTime(); 
+            let diffDays = (resolvedMs - t.rawDate) / (1000 * 3600 * 
+24);
+            metrics.totalTATDays += diffDays;
+            metrics.tatCount++;
+          }
+        
+}
+
+        if (t.status === "Raised") metrics.pendingInward++;
+        if (t.status 
+=== "Inwarded" || t.status === "Pickup Scheduled") metrics.pendingQC++;
+       
+ if (t.status.indexOf("Testing") !== -1) metrics.pendingSettlement++;
+        if (t.status 
+=== "Sent to Brand Service Center" || (t.status === "Resolved" && 
+t.brandRtoStatus === "Pending")) metrics.pendingRTO++;
+        
+        if (!isClosed && 
+t.rawDate) {
+           let ageDays = (nowMs - t.rawDate) / (1000 * 3600 * 24);
+           if (ageDays > 
+7) metrics.redFlags++;
+        }
+
+        if (includesToday(t.testingDate)) {
+          if 
+(t.status.indexOf("Approved") !== -1 || (t.qcRemarks && 
+t.qcRemarks.toLowerCase().indexOf("reject") === -1)) {
+            metrics.qcPassedToday++;
+ 
+         }
+          if (t.status.indexOf("Rejected") !== -1 || (t.qcRemarks && 
+t.qcRemarks.toLowerCase().indexOf("reject") !== -1)) {
+            metrics.qcRejectedToday++;
+  
+        }
+        }
+        
+        if (includesToday(t.resolvedDate)) {
+          if 
+(t.resolutionType === "Credit Note Issued") metrics.cnIssuedToday++;
+          if 
+(t.resolutionType === "Replacement Dispatched") metrics.replacementsDispatchedToday++;
+          
+if (t.resolutionType === "Rejected & Returned") metrics.itemsReturnedToday++;
+        
+}
+
+        if (t.status.indexOf("Rejected") !== -1 || t.resolutionType === 
+"Rejected & Returned") {
+          if (t.shopName) metrics.allRejectedDealers.push(t.shopName);
+   
+     }
+      });
+
+      return {
+        macro: {
+          raised: metrics.raisedToday,
+      
+    resolved: metrics.resolvedToday,
+          drift: metrics.raisedToday - metrics.resolvedToday,
+          
+avgTat: metrics.tatCount > 0 ? (metrics.totalTATDays / metrics.tatCount).toFixed(1) : 0,
+        },
+        
+bottlenecks: {
+          inward: metrics.pendingInward, qc: metrics.pendingQC,
+          settlement: 
+metrics.pendingSettlement, rto: metrics.pendingRTO, redFlags: metrics.redFlags
+        },
+        qc: {
+   
+       passed: metrics.qcPassedToday, rejected: metrics.qcRejectedToday,
+          rejectionRate: 
+(metrics.qcPassedToday + metrics.qcRejectedToday) > 0 ? Math.round((metrics.qcRejectedToday / 
+(metrics.qcPassedToday + metrics.qcRejectedToday)) * 100) : 0,
+          cnIssued: metrics.cnIssuedToday, replaced: 
+metrics.replacementsDispatchedToday, returned: metrics.itemsReturnedToday
+        },
+        intelligence: 
+{
+          topBrand: getFrequency(metrics.brandsToday).name, topSKU: getFrequency(metrics.skusToday).name, 
+topDefect: getFrequency(metrics.defectsToday).name
+        },
+        dealer: {
+          highestReturner: 
+getFrequency(metrics.dealersToday).name,
+          uniqueCount: [...new Set(metrics.dealersToday)].length,
+  
+        frequentOffender: getFrequency(metrics.allRejectedDealers).name
+        }
+      };
+    }, 
+[tickets]);
+
+    const shareToWhatsApp = () => {
+      if (!eodData) return 
+alert("Database is syncing, please wait a moment.");
+      const d = eodData;
+      const waText = 
+"*???? YASH MARKETING - EOD REPLACEMENT REPORT*\\
+*Date:* " + getTodayString() + "\\
+\\
+*???? 
+MACRO VELOCITY*\\
+???? Tickets Raised Today: *" + d.macro.raised + "*\\
+??? Tickets Resolved Today: 
+*" + d.macro.resolved + "*\\
+???? Net Backlog Drift: *" + (d.macro.drift > 0 ? '+' : 
+'') + d.macro.drift + "*\\
+?????? Avg TAT: *" + d.macro.avgTat + " Days*\\
+\\
+*?????? 
+FUNNEL BOTTLENECKS*\\
+???? Pending Inward: *" + d.bottlenecks.inward + "*\\
+???? Pending QC (Testing): 
+*" + d.bottlenecks.qc + "*\\
+???? Pending Settlement: *" + d.bottlenecks.settlement + 
+"*\\
+???? Pending Brand (RTO): *" + d.bottlenecks.rto + "*\\
+???? Red Flags (>7 Days Old): 
+*" + d.bottlenecks.redFlags + "*\\
+\\
+*?????? QC & OUTCOMES*\\
+??? QC Passed: *" + d.qc.passed 
++ "*\\
+??? QC Rejected: *" + d.qc.rejected + " (" + d.qc.rejectionRate + "%)*\\
+???? 
+Credit Notes Issued: *" + d.qc.cnIssued + "*\\
+???? Replacements Dispatched: *" + d.qc.replaced + 
+"*\\
+???? Returned to Dealer: *" + d.qc.returned + "*\\
+\\
+*???? NETWORK INTEL*\\
+???? Top 
+Defective Brand: *" + d.intelligence.topBrand + "*\\
+?????? Top Defect Type: *" + 
+d.intelligence.topDefect + "*\\
+???? Highest Return Dealer: *" + d.dealer.highestReturner + 
+"*\\
+???? Frequent Reject Offender: *" + d.dealer.frequentOffender + "*";
+      
+window.open("https://wa.me/?text=" + encodeURIComponent(waText), '_blank');
+    };
+
+    
+const tabs = [
+      { id: "Raised", label: "???? Pending Inward", count: 
+tickets.filter(t=>t.status==="Raised").length },
+      { id: "Inwarded", 
+label: "???? Pending QC", count: tickets.filter(t=>t.status==="Inwarded" || 
+t.status==="Pickup Scheduled").length },
+      { id: "Testing", label: "???? 
+Settlement", count: tickets.filter(t=>t.status.indexOf("Testing") !== -1).length },
+   
+   { id: "RTO", label: "???? Brand Claims", count: 
+tickets.filter(t=>t.status==="Sent to Brand Service Center" || 
+(t.status==="Resolved" && t.brandRtoStatus==="Pending")).length },
+   
+   { id: "Closed", label: "??? History", count: tickets.filter(t=> t.status !== 
+"Raised" && t.status !== "Inwarded" && t.status !== "Pickup 
+Scheduled" && t.status.indexOf("Testing") === -1 && t.status !== "Sent 
+to Brand Service Center" && !(t.status === "Resolved" && t.brandRtoStatus 
+=== "Pending")).length }
+    ];
+
+    return (
+      <div 
+className="max-w-6xl mx-auto p-4">
+        <div className="bg-slate-900 text-white p-5 
+rounded-2xl shadow-xl flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          
+<div>
+            <h1 className="text-2xl font-black tracking-tight flex items-center 
+gap-2"><span className="text-3xl">??????</span> Yash Marketing</h1>
+    
+        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Replacement 
+Operations Center</p>
+          </div>
+          <div className="flex flex-col 
+md:flex-row gap-3 w-full md:w-auto items-center">
+            <div className="flex bg-slate-800 
+p-1 rounded-xl w-full md:w-auto">
+              <button onClick={() => 
+setViewMode("Ops")} className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-black text-sm 
+transition-all ${viewMode === "Ops" ? 'bg-blue-600 text-white shadow' : 'text-slate-400 
+hover:text-white'}`}>???? Processing Center</button>
+              <button onClick={() 
+=> setViewMode("EOD")} className={`flex-1 md:flex-none px-6 py-2 rounded-lg font-black 
+text-sm transition-all ${viewMode === "EOD" ? 'bg-indigo-600 text-white shadow' : 
+'text-slate-400 hover:text-white'}`}>???? Visual Radar</button>
+            
+</div>
+            <button onClick={shareToWhatsApp} className="w-full md:w-auto 
+bg-green-500 hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-black text-sm shadow-lg transition flex 
+items-center justify-center gap-2 active:scale-95 border border-green-400"><span 
+className="text-lg">????</span> WA Report</button>
+            <button 
+onClick={fetchTickets} className="w-full md:w-auto bg-slate-800 hover:bg-slate-700 px-4 py-2.5 
+rounded-xl font-black text-sm transition flex items-center justify-center gap-2 active:scale-95">???? 
+Refresh</button>
+          </div>
+        </div>
+
+        {loading ? (
+        
+  <div className="flex flex-col items-center justify-center py-20">
+            <div 
+className="border-4 border-slate-300 border-t-blue-600 w-12 h-12 rounded-full spinner 
+mb-4"></div>
+            <p className="font-black text-slate-500 uppercase 
+tracking-widest">Syncing Database...</p>
+          </div>
+        ) : viewMode 
+=== "EOD" && eodData ? (
+          
+          <div className="animate-fade 
+space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border 
+border-slate-200">
+              <h2 className="text-lg font-black text-slate-900 mb-4 uppercase 
+tracking-wide border-b pb-2">Phase 1: Macro Velocity</h2>
+              <div 
+className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div 
+className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="text-xs 
+font-bold text-slate-500 uppercase">Raised Today</p><p className="text-3xl font-black 
+text-slate-900 mt-1">{eodData.macro.raised}</p></div>
+                <div 
+className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="text-xs 
+font-bold text-slate-500 uppercase">Resolved Today</p><p className="text-3xl font-black 
+text-green-600 mt-1">{eodData.macro.resolved}</p></div>
+                <div 
+className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="text-xs 
+font-bold text-slate-500 uppercase">Net Backlog Drift</p><p className={`text-3xl font-black 
+mt-1 ${eodData.macro.drift > 0 ? 'text-red-500' : 
+'text-green-500'}`}>{eodData.macro.drift > 0 ? "+" : 
+""}{eodData.macro.drift}</p></div>
+                <div 
+className="bg-slate-50 p-4 rounded-xl border border-slate-100"><p className="text-xs 
+font-bold text-slate-500 uppercase">Avg TAT (Days)</p><p className="text-3xl font-black 
+text-slate-900 mt-1">{eodData.macro.avgTat}</p></div>
+              
+</div>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl 
+shadow-sm border border-slate-200">
+              <h2 className="text-lg font-black 
+text-slate-900 mb-4 uppercase tracking-wide border-b pb-2">Phase 2: Funnel Bottlenecks</h2>
+        
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div 
+className="bg-red-50 p-4 rounded-xl border border-red-100"><p className="text-xs font-bold 
+text-red-600 uppercase">Pending Inward</p><p className="text-2xl font-black text-red-900 
+mt-1">{eodData.bottlenecks.inward}</p></div>
+                <div 
+className="bg-amber-50 p-4 rounded-xl border border-amber-100"><p className="text-xs 
+font-bold text-amber-600 uppercase">Pending QC</p><p className="text-2xl font-black 
+text-amber-900 mt-1">{eodData.bottlenecks.qc}</p></div>
+                <div 
+className="bg-blue-50 p-4 rounded-xl border border-blue-100"><p className="text-xs 
+font-bold text-blue-600 uppercase">Pending Settlement</p><p className="text-2xl font-black 
+text-blue-900 mt-1">{eodData.bottlenecks.settlement}</p></div>
+                
+<div className="bg-purple-50 p-4 rounded-xl border border-purple-100"><p 
+className="text-xs font-bold text-purple-600 uppercase">Pending Brand (RTO)</p><p 
+className="text-2xl font-black text-purple-900 
+mt-1">{eodData.bottlenecks.rto}</p></div>
+                <div 
+className="bg-slate-900 p-4 rounded-xl shadow-lg border border-slate-700"><p 
+className="text-xs font-bold text-red-400 uppercase">Red Flags (&gt;7 Days)</p><p 
+className="text-2xl font-black text-white 
+mt-1">{eodData.bottlenecks.redFlags}</p></div>
+              </div>
+      
+      </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+   
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          
+      <h2 className="text-lg font-black text-slate-900 mb-4 uppercase tracking-wide border-b 
+pb-2">Phase 3: Outcomes Today</h2>
+                <div className="grid grid-cols-2 
+gap-4">
+                  <div><p className="text-[10px] font-bold text-slate-500 
+uppercase">QC Passed</p><p className="text-xl font-black 
+text-green-600">{eodData.qc.passed}</p></div>
+                  <div><p 
+className="text-[10px] font-bold text-slate-500 uppercase">QC Rejected</p><p 
+className="text-xl font-black text-red-600">{eodData.qc.rejected}</p></div>
+ 
+                 <div className="col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-100 flex 
+justify-between items-center"><span className="text-xs font-bold text-slate-600 
+uppercase">Daily Rejection Rate</span><span className="text-lg font-black 
+text-slate-900">{eodData.qc.rejectionRate}%</span></div>
+                  
+<div><p className="text-[10px] font-bold text-slate-500 uppercase">CN 
+Issued</p><p className="text-lg font-black 
+text-slate-800">{eodData.qc.cnIssued}</p></div>
+                  <div><p 
+className="text-[10px] font-bold text-slate-500 uppercase">Dispatched / 
+Returned</p><p className="text-lg font-black text-slate-800">{eodData.qc.replaced} 
+/ {eodData.qc.returned}</p></div>
+                </div>
+              
+</div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-sm border 
+border-slate-200">
+                <h2 className="text-lg font-black text-slate-900 mb-4 
+uppercase tracking-wide border-b pb-2">Phase 4 & 5: Network Intel</h2>
+                <ul 
+className="space-y-4">
+                  <li className="flex justify-between items-center 
+border-b border-slate-50 pb-2"><span className="text-xs font-bold text-slate-500 
+uppercase">Top Defective Brand</span><span className="font-black text-sm text-red-600 
+bg-red-50 px-2 py-1 rounded">{eodData.intelligence.topBrand}</span></li>
+            
+      <li className="flex justify-between items-center border-b border-slate-50 pb-2"><span 
+className="text-xs font-bold text-slate-500 uppercase">Primary Defect</span><span 
+className="font-black text-sm 
+text-slate-900">{eodData.intelligence.topDefect}</span></li>
+                  
+<li className="flex justify-between items-center border-b border-slate-50 pb-2"><span 
+className="text-xs font-bold text-slate-500 uppercase">Highest Return Dealer</span><span 
+className="font-black text-sm text-slate-900 truncate 
+max-w-[150px]">{eodData.dealer.highestReturner}</span></li>
+                  
+<li className="flex justify-between items-center"><span className="text-xs font-bold 
+text-slate-500 uppercase">Frequent Reject Offender</span><span className="font-black 
+text-sm text-amber-600 truncate 
+max-w-[150px]">{eodData.dealer.frequentOffender}</span></li>
+                
+</ul>
+              </div>
+            </div>
+          </div>
+
+        
+) : (
+
+          <div className="animate-fade">
+            <div className="flex 
+flex-col md:flex-row gap-4 mb-6">
+              <div className="flex bg-white rounded-xl 
+shadow-sm p-1 overflow-x-auto no-scrollbar">
+                {tabs.map(tab => (
+                  
+<button key={tab.id} onClick={() => { setActiveTab(tab.id); setSearchQuery(""); 
+}} className={`flex-1 min-w-[140px] py-3 px-4 rounded-lg font-black text-sm transition-all 
+whitespace-nowrap ${activeTab === tab.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 
+hover:bg-slate-50'}`}>{tab.label} <span className={`ml-1 px-2 py-0.5 rounded-full 
+text-[10px] ${activeTab === tab.id ? 'bg-white text-blue-600' : 'bg-slate-200 
+text-slate-700'}`}>{tab.count}</span></button>
+                ))}
+         
+     </div>
+              <div className="flex-1"><input type="text" 
+placeholder="Search Ticket ID or Shop Name..." value={searchQuery} onChange={(e) => 
+setSearchQuery(e.target.value)} className="w-full h-full min-h-[48px] bg-white border-none shadow-sm 
+rounded-xl px-5 font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+  
+          </div>
+
+            {filteredTickets.length === 0 ? (
+              <div 
+className="bg-white rounded-2xl p-12 text-center shadow-sm border border-slate-100"><span 
+className="text-5xl">???</span><h3 className="text-xl font-black text-slate-800 
+mt-4">Zero Bottlenecks!</h3><p className="text-slate-500 font-bold mt-2">No 
+tickets found in this section.</p></div>
+            ) : (
+              <div 
+className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                
+{filteredTickets.map((ticket) => (
+                  <div key={ticket.ticketId} 
+className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-lg transition-all flex 
+flex-col justify-between">
+                    <div className="flex justify-between items-start 
+border-b border-slate-100 pb-3 mb-3">
+                      <div className="flex-1 
+pr-3">
+                        <div className="bg-slate-100 text-slate-600 text-[10px] 
+font-black px-2 py-1 rounded-md inline-block uppercase tracking-wider 
+mb-2">{ticket.ticketId}</div>
+                        <h3 className="font-black 
+text-lg text-slate-900 leading-tight break-words whitespace-normal">{ticket.shopName}</h3>
+   
+                     <div className="flex items-center gap-2 mt-2"><p className="text-xs 
+font-bold text-slate-500">{ticket.date} \\u2022 {ticket.phone}</p>{ticket.phone 
+&& (<a href={`tel:${ticket.phone}`} className="inline-flex items-center gap-1 
+bg-green-100 hover:bg-green-200 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-black 
+transition">???? CALL</a>)}</div>
+                      </div>
+              
+        <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase text-center 
+whitespace-nowrap ${ticket.status === 'Raised' ? 'bg-red-100 text-red-700' : ticket.status 
+=== 'Inwarded' ? 'bg-yellow-100 text-yellow-700' : ticket.status.indexOf('Testing') 
+!== -1 ? 'bg-blue-100 text-blue-700' : ticket.status.indexOf('Rejected') !== -1 ? 
+'bg-gray-200 text-gray-700' : 'bg-green-100 
+text-green-700'}`}>{ticket.status}</div>
+                    </div>
+
+        
+            <div className="mb-4 flex-1">
+                      <div className="flex 
+items-center gap-2 mb-2"><span className="font-black text-sm 
+text-slate-800">{ticket.brand}</span><span 
+className="text-slate-300">|</span><span className="font-bold text-sm 
+text-slate-600 line-clamp-1">{ticket.productName}</span></div>
+                      
+<div className="bg-red-50 border border-red-100 rounded-xl p-3 mb-3"><div 
+className="text-[10px] text-red-500 font-black uppercase tracking-wider mb-1">Reported 
+Issue</div><div className="font-bold text-sm 
+text-red-900">{ticket.defectType}</div>{ticket.remarks && <div 
+className="text-xs text-red-700 italic 
+mt-1">"{ticket.remarks}"</div>}</div>
+                      
+{ticket.mediaUrl && (<div className="mb-3"><p className="text-[10px] 
+text-slate-500 font-black uppercase tracking-wider mb-1">Condition Image</p><div 
+className="relative rounded-xl overflow-hidden border border-slate-200 bg-slate-50 h-32 
+w-full"><img src={ticket.mediaUrl} alt="Condition Preview" 
+loading="lazy" className="w-full h-full object-cover" onError={(e) => { 
+e.target.style.display = 'none'; }} /></div></div>)}
+                      
+<div className="flex gap-2">
+                        {ticket.mediaUrl && (<a 
+href={ticket.mediaUrl} target="_blank" rel="noreferrer" className="flex-1 
+bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center py-2 rounded-xl text-xs font-black text-slate-700 
+transition">???? View Full Image</a>)}
+                        {ticket.audioUrl && 
+(<a href={ticket.audioUrl} target="_blank" rel="noreferrer" 
+className="flex-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-center py-2 rounded-xl text-xs 
+font-black text-slate-700 transition">??????? Play Audio</a>)}
+                      
+</div>
+                    </div>
+
+                    {activeTab !== 
+"Closed" && (
+                      <div className="pt-3 border-t 
+border-slate-100">
+                        {ticket.status === "Raised" && 
+(<button onClick={() => updateStatus(ticket, "Inwarded")} disabled={processingId 
+=== ticket.ticketId} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3 
+rounded-xl shadow-md transition active:scale-95">{processingId === ticket.ticketId ? 
+"Processing..." : "???? MARK AS INWARDED"}</button>)}
+                        
+{(ticket.status === "Inwarded" || ticket.status === "Pickup Scheduled") 
+&& (<div className="flex gap-3"><button onClick={() => handleQC(ticket, 
+true)} className="flex-1 bg-green-500 hover:bg-green-600 text-white font-black py-3 rounded-xl shadow-md 
+transition active:scale-95">??? QC PASS</button><button onClick={() => 
+handleQC(ticket, false)} className="flex-1 bg-red-500 hover:bg-red-600 text-white font-black py-3 
+rounded-xl shadow-md transition active:scale-95">??? REJECT</button></div>)}
+           
+             {ticket.status.indexOf("Testing") !== -1 && 
+(<div>{ticket.status.indexOf("Rejected") !== -1 ? (<div className="bg-red-100 p-2 
+rounded-lg text-xs font-bold text-red-800 mb-2 text-center border border-red-200">QC Failed: 
+{ticket.qcRemarks}</div>) : (<div className="bg-green-100 p-2 rounded-lg text-xs font-bold 
+text-green-800 mb-2 text-center border border-green-200">QC Passed. Ready for Credit 
+Note.</div>)}<button onClick={() => setShowResolveModal(ticket)} 
+className="w-full bg-slate-900 hover:bg-black text-white font-black py-3 rounded-xl shadow-md transition 
+active:scale-95">???? FINALIZE SETTLEMENT</button></div>)}
+                        
+{(ticket.status === "Sent to Brand Service Center" || (ticket.status === 
+"Resolved" && ticket.brandRtoStatus === "Pending")) && (<div 
+className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border 
+border-slate-200"><div className="text-xs font-bold text-slate-500 ml-2">Claim Status: 
+<span className="text-amber-600 font-black">Pending</span></div><button 
+onClick={() => handleRTO(ticket)} className="bg-amber-500 hover:bg-amber-600 text-white 
+text-[10px] font-black px-4 py-2 rounded-lg shadow-sm transition active:scale-95">???? DISPATCH TO 
+BRAND</button></div>)}
+                      </div>
+                    )}
+
+  
+                  {activeTab === "Closed" && (
+                      <div 
+className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                        <span 
+className="text-[10px] text-slate-500 font-black uppercase">Final Resolution</span>
+  
+                      <div className="font-bold text-sm text-slate-900 
+mt-1">{ticket.resolutionType || ticket.status}</div>
+                        <div 
+className="text-xs text-slate-600 italic mt-1">{ticket.resolutionDetails || ticket.qcRemarks || 
+"Closed."}</div>
+                      </div>
+                    )}
+          
+        </div>
+                ))}
+              </div>
+            )}
+          
+</div>
+        )}
+
+        {showResolveModal && (
+          <div 
+className="fixed inset-0 bg-slate-900 bg-opacity-80 z-50 flex items-center justify-center p-4 
+animate-fade">
+            <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl 
+overflow-hidden">
+              <div className="bg-slate-900 p-4 flex justify-between 
+items-center text-white"><h3 className="font-black text-lg">Finalize 
+Settlement</h3><button onClick={() => setShowResolveModal(null)} 
+className="text-slate-400 hover:text-white font-black text-xl">???</button></div>
+ 
+             <div className="p-6">
+                <p className="text-sm font-bold 
+text-slate-600 mb-4">Ticket: <span className="text-slate-900 
+font-black">{showResolveModal.ticketId}</span></p>
+                <label 
+className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Resolution 
+Type</label>
+                <select value={resolveType} onChange={(e) => 
+setResolveType(e.target.value)} className="w-full bg-slate-50 p-3 rounded-xl border border-slate-200 
+outline-none font-bold text-sm text-slate-800 mb-4 focus:ring-2 focus:ring-blue-500">
+                  
+<option value="">-- Select Outcome --</option><option value="Credit Note 
+Issued">Credit Note Issued (Ledger Updated)</option><option value="Replacement 
+Dispatched">New Piece Dispatched</option><option value="Sent to Brand Service 
+Center">??? Send to Brand Service Center</option><option value="Rejected & 
+Returned">Rejected & Returned to Dealer</option>
+                </select>
+           
+     <label className="text-[10px] font-black uppercase text-slate-500 mb-1 block">Details 
+(CN Number, Notes)</label>
+                <input type="text" 
+value={resolveDetails} onChange={(e) => setResolveDetails(e.target.value)} 
+placeholder="e.g., CN #1042 generated" className="w-full bg-slate-50 p-3 rounded-xl border 
+border-slate-200 outline-none font-bold text-sm text-slate-800 mb-6 focus:ring-2 focus:ring-blue-500" />
+   
+             <button onClick={handleResolveSubmit} className="w-full bg-green-500 
+hover:bg-green-600 text-white font-black py-4 rounded-xl shadow-lg transition active:scale-95">CONFIRM & 
+CLOSE TICKET</button>
+              </div>
+            </div>
+          
+</div>
+        )}
+      </div>
+    );
+  }
+
+  const rootElement = 
+document.getElementById('root');
+  if (!rootElement) throw new Error("Root element not found");
+  
+const root = ReactDOM.createRoot(rootElement);
+  root.render(<AdminApp />);
+
+} catch(err) {
+  
+throw err; 
+}
+</script>
+</body>
+</html>
